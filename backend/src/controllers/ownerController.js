@@ -117,6 +117,28 @@ export const updateProperty = catchAsync(async (req, res, next) => {
 });
 
 /**
+ * Delete a property and its associated units.
+ * DELETE /api/owner/properties/:id
+ */
+export const deleteProperty = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const ownerId = req.user.id || req.user._id;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new AppError('Invalid property ID format', 400));
+  }
+
+  await verifyPropertyOwnership(id, ownerId);
+  await RoomUnit.deleteMany({ propertyId: id });
+  await Property.findByIdAndDelete(id);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Property deleted successfully',
+  });
+});
+
+/**
  * List all properties owned by logged-in host with unit inventory counts.
  * GET /api/owner/properties
  */

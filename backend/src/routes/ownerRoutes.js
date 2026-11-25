@@ -2,6 +2,7 @@ import express from 'express';
 import {
   createProperty,
   updateProperty,
+  deleteProperty,
   getOwnerProperties,
   createUnit,
   updateUnit,
@@ -37,6 +38,7 @@ router.use(authorizeRoles('owner', 'admin'));
 router.post('/properties', validate(createPropertySchema), createProperty);
 router.get('/properties', getOwnerProperties);
 router.put('/properties/:id', validate(updatePropertySchema), updateProperty);
+router.delete('/properties/:id', deleteProperty);
 
 // Unit Inventory Management
 router.post('/units', validate(createUnitSchema), createUnit);
