@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 import Property from '../models/Property.js';
 import RoomUnit from '../models/RoomUnit.js';
 import Booking from '../models/Booking.js';
@@ -6,12 +8,72 @@ import BlockedDate from '../models/BlockedDate.js';
 import PricingRule from '../models/PricingRule.js';
 import { catchAsync, AppError } from '../middleware/errorHandler.js';
 import { getOwnerBookings as getOwnerBookingsService } from '../services/bookingService.js';
+import { generateTokens } from '../utils/tokenUtils.js';
 
 /**
  * @controller ownerController
  * Host/owner portal endpoints: property management, room unit inventory,
  * date blocking, dynamic pricing rules, reservations list, and business analytics.
  */
+
+/**
+ * Verify Host Portal ID & Password to unlock Host Dashboard and Analytics & Reports.
+ * POST /api/owner/verify-access
+ */
+export const verifyHostAccess = catchAsync(async (req, res, next) => {
+  const { hostId, password } = req.body;
+
+  if (!hostId || !password) {
+    return next(new AppError('Host ID and Password are required', 400));
+  }
+
+  const configuredHostId = process.env.HOST_PORTAL_ID || 'stayspot_host';
+  const configuredHostPass = process.env.HOST_PORTAL_PASSWORD || 'StaySpot@Host2026';
+
+  let ownerUser = null;
+
+  // 1. Check dedicated Host Portal ID & Password
+  if (hostId.trim() === configuredHostId && password === configuredHostPass) {
+    ownerUser = await User.findOne({ role: { $in: ['owner', 'admin'] } }).sort({ createdAt: 1 });
+  } else {
+    // 2. Or check an existing owner/admin account email & password
+    const user = await User.findOne({
+      email: hostId.trim().toLowerCase(),
+      role: { $in: ['owner', 'admin'] },
+    }).select('+password');
+
+    if (user && (await user.comparePassword(password))) {
+      ownerUser = user;
+    }
+  }
+
+  if (!ownerUser) {
+    return next(new AppError('Invalid Host ID or Password. Access denied.', 401));
+  }
+
+  const { accessToken, refreshToken } = generateTokens(ownerUser);
+  const hostPortalToken = jwt.sign(
+    { id: ownerUser._id, role: ownerUser.role, hostPortal: true },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: '4h' }
+  );
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Host Portal access granted',
+    hostPortalToken,
+    token: accessToken,
+    refreshToken,
+    user: {
+      id: ownerUser._id,
+      _id: ownerUser._id,
+      name: ownerUser.name,
+      email: ownerUser.email,
+      role: ownerUser.role,
+      phone: ownerUser.phone,
+    },
+  });
+});
 
 /**
  * Helper: Verify that a property belongs to the requesting owner.
@@ -774,6 +836,7 @@ export const getUnitCalendar = catchAsync(async (req, res, next) => {
 });
 
 export default {
+  verifyHostAccess,
   createProperty,
   updateProperty,
   getOwnerProperties,

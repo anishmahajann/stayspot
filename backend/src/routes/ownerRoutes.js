@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  verifyHostAccess,
   createProperty,
   updateProperty,
   deleteProperty,
@@ -30,7 +31,10 @@ import {
 
 const router = express.Router();
 
-// All owner routes require authentication and the 'owner' or 'admin' role
+// Public endpoint to verify Host Portal ID & Password
+router.post('/verify-access', verifyHostAccess);
+
+// All subsequent owner routes require authentication and the 'owner' or 'admin' role
 router.use(authenticateToken);
 router.use(authorizeRoles('owner', 'admin'));
 

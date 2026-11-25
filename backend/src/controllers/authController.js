@@ -263,18 +263,20 @@ export const firebaseLogin = catchAsync(async (req, res, next) => {
     return next(new AppError(err.message || 'Invalid or expired Firebase ID token', 401));
   }
 
-  if (!decoded?.email) {
+  const firebaseUid = decoded.uid || decoded.user_id || decoded.sub;
+
+  if (!decoded?.email || !firebaseUid) {
     return next(new AppError('Firebase account did not return an email address', 400));
   }
 
   let user = await User.findOne({
-    $or: [{ firebaseUid: decoded.uid }, { email: decoded.email.toLowerCase() }],
+    $or: [{ firebaseUid }, { email: decoded.email.toLowerCase() }],
   });
 
   if (user) {
     let updated = false;
     if (!user.firebaseUid) {
-      user.firebaseUid = decoded.uid;
+      user.firebaseUid = firebaseUid;
       updated = true;
     }
     if (!user.avatar && decoded.picture) {
@@ -286,7 +288,7 @@ export const firebaseLogin = catchAsync(async (req, res, next) => {
     user = await User.create({
       name: decoded.name || decoded.email.split('@')[0] || 'StaySpot User',
       email: decoded.email.toLowerCase(),
-      firebaseUid: decoded.uid,
+      firebaseUid,
       authProvider: 'firebase',
       avatar: decoded.picture || '',
       role: role === 'owner' ? 'owner' : 'guest',

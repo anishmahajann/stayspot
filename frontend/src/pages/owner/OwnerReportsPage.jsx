@@ -12,6 +12,7 @@ import {
   FiCalendar,
   FiPercent,
   FiBarChart2,
+  FiLock,
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
@@ -144,6 +145,19 @@ export default function OwnerReportsPage() {
           >
             <FiDownload className="w-4 h-4 text-emerald-600" />
             <span>Export CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem('hostPortalToken');
+              toast.success('Host Portal locked');
+              window.location.href = '/';
+            }}
+            className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-2xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 font-semibold text-xs sm:text-sm transition-colors"
+          >
+            <FiLock className="w-4 h-4" />
+            <span>Lock Portal</span>
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'react-hot-toast';
 import store from './store/store';
 import App from './App';
+import './config/firebase';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(

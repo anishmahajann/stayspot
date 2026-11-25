@@ -8,6 +8,7 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
+import { connectDB } from './config/db.js';
 import User from './models/User.js';
 import Property from './models/Property.js';
 import RoomUnit from './models/RoomUnit.js';
@@ -21,7 +22,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/staysp
 const seedDatabase = async () => {
   try {
     console.log('🔗 Connecting to MongoDB...');
-    await mongoose.connect(MONGODB_URI);
+    await connectDB();
     console.log('✅ Connected to MongoDB');
 
     console.log('🗑️  Clearing existing data...');

@@ -114,6 +114,7 @@ export const logout = createAsyncThunk('auth/logout', async () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('hostPortalToken');
   }
   return true;
 });

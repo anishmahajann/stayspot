@@ -78,21 +78,6 @@ export default function Navbar() {
               </Link>
             )}
 
-            {isOwner && (
-              <div className="flex items-center space-x-1 border-l border-gray-200 pl-3 ml-2">
-                <Link
-                  to="/owner/dashboard"
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center space-x-1.5 ${
-                    location.pathname.startsWith('/owner')
-                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
-                      : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-                  }`}
-                >
-                  <FiLayers className="w-4 h-4" />
-                  <span>Host Portal</span>
-                </Link>
-              </div>
-            )}
           </div>
 
           {/* User Account / Auth Actions */}
