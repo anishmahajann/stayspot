@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [
         function () {
-          return this.authProvider !== 'google';
+          return this.authProvider !== 'google' && this.authProvider !== 'firebase';
         },
         'Please provide a password',
       ],
@@ -33,9 +33,14 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
+    firebaseUid: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
     authProvider: {
       type: String,
-      enum: ['local', 'google'],
+      enum: ['local', 'google', 'firebase'],
       default: 'local',
     },
     phone: {

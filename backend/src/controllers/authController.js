@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { catchAsync, AppError } from '../middleware/errorHandler.js';
 import { generateTokens, getRefreshTokenCookieOptions } from '../utils/tokenUtils.js';
+import { verifyFirebaseToken } from '../config/firebase.js';
 
 export const register = catchAsync(async (req, res, next) => {
   const { name, email, password, phone, role } = req.body;
@@ -244,10 +245,78 @@ export const googleLogin = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * Sign in or register using a Firebase Authentication ID token.
+ * POST /api/auth/firebase
+ */
+export const firebaseLogin = catchAsync(async (req, res, next) => {
+  const { idToken, role } = req.body;
+
+  if (!idToken) {
+    return next(new AppError('Firebase ID token is required', 400));
+  }
+
+  let decoded;
+  try {
+    decoded = await verifyFirebaseToken(idToken);
+  } catch (err) {
+    return next(new AppError(err.message || 'Invalid or expired Firebase ID token', 401));
+  }
+
+  if (!decoded?.email) {
+    return next(new AppError('Firebase account did not return an email address', 400));
+  }
+
+  let user = await User.findOne({
+    $or: [{ firebaseUid: decoded.uid }, { email: decoded.email.toLowerCase() }],
+  });
+
+  if (user) {
+    let updated = false;
+    if (!user.firebaseUid) {
+      user.firebaseUid = decoded.uid;
+      updated = true;
+    }
+    if (!user.avatar && decoded.picture) {
+      user.avatar = decoded.picture;
+      updated = true;
+    }
+    if (updated) await user.save();
+  } else {
+    user = await User.create({
+      name: decoded.name || decoded.email.split('@')[0] || 'StaySpot User',
+      email: decoded.email.toLowerCase(),
+      firebaseUid: decoded.uid,
+      authProvider: 'firebase',
+      avatar: decoded.picture || '',
+      role: role === 'owner' ? 'owner' : 'guest',
+    });
+  }
+
+  const { accessToken, refreshToken } = generateTokens(user);
+  res.cookie('refreshToken', refreshToken, getRefreshTokenCookieOptions());
+
+  res.status(200).json({
+    status: 'success',
+    token: accessToken,
+    refreshToken,
+    user: {
+      id: user._id,
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      avatar: user.avatar,
+    },
+  });
+});
+
 export default {
   register,
   login,
   googleLogin,
+  firebaseLogin,
   refreshToken,
   getMe,
   updateProfile,

@@ -14,7 +14,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 
-import { connectDB } from './src/config/db.js';
+import { connectDB, getDBStatus } from './src/config/db.js';
+import { initFirebaseAdmin, isFirebaseAdminConfigured } from './src/config/firebase.js';
 import { errorHandler, AppError } from './src/middleware/errorHandler.js';
 import { generalLimiter } from './src/middleware/rateLimiter.js';
 
@@ -69,6 +70,8 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     environment: process.env.NODE_ENV || 'development',
+    database: getDBStatus(),
+    firebase: { configured: isFirebaseAdminConfigured() },
     timestamp: new Date().toISOString(),
   });
 });
@@ -95,6 +98,7 @@ const PORT = parseInt(process.env.PORT, 10) || 5000;
 let server;
 const startServer = async () => {
   try {
+    initFirebaseAdmin();
     await connectDB();
     server = app.listen(PORT, () => {
       console.log(`[Server] Hotel & Event Booking API running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);

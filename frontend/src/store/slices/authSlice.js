@@ -83,6 +83,28 @@ export const googleLogin = createAsyncThunk(
   }
 );
 
+export const firebaseLogin = createAsyncThunk(
+  'auth/firebaseLogin',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/firebase', payload);
+      const data = response.data;
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      if (data.refreshToken) {
+        localStorage.setItem('refreshToken', data.refreshToken);
+      }
+      const user = data.user || data;
+      localStorage.setItem('user', JSON.stringify(user));
+      return { user, token: data.token };
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Firebase login failed';
+      return rejectWithValue(message);
+    }
+  }
+);
+
 export const logout = createAsyncThunk('auth/logout', async () => {
   try {
     await api.post('/auth/logout');
@@ -173,6 +195,21 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
       })
       .addCase(googleLogin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // firebaseLogin
+      .addCase(firebaseLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(firebaseLogin.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isAuthenticated = true;
+      })
+      .addCase(firebaseLogin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

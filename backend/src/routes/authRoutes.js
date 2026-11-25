@@ -3,6 +3,7 @@ import {
   register,
   login,
   googleLogin,
+  firebaseLogin,
   refreshToken,
   getMe,
   updateProfile,
@@ -22,6 +23,7 @@ const router = express.Router();
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 router.post('/google', authLimiter, googleLogin);
+router.post('/firebase', authLimiter, firebaseLogin);
 router.post('/refresh', refreshToken);
 router.post('/logout', logout);
 

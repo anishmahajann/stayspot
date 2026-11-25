@@ -1,21 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { googleLogin } from '../../store/slices/authSlice';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider, isFirebaseConfigured } from '../../config/firebase';
+import { firebaseLogin, googleLogin } from '../../store/slices/authSlice';
 import toast from 'react-hot-toast';
 
 /**
- * Google Sign-In Button using Google Identity Services (GIS).
- * Renders the official Google button when VITE_GOOGLE_CLIENT_ID is configured,
- * or a styled fallback button that explains how to add the client ID.
+ * Google Sign-In Button:
+ * - Uses Firebase Authentication (GoogleAuthProvider popup) when VITE_FIREBASE_* is configured.
+ * - Falls back to Google Identity Services (GIS) when VITE_GOOGLE_CLIENT_ID is configured.
+ * - Otherwise displays a styled button with setup instructions on click.
  */
 export default function GoogleLoginButton({ role = 'guest', onSuccess, text = 'continue_with' }) {
   const dispatch = useDispatch();
   const buttonContainerRef = useRef(null);
   const [gisReady, setGisReady] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    if (!clientId) return;
+    if (isFirebaseConfigured || !clientId) return;
 
     let cancelled = false;
     const initGoogle = () => {
@@ -68,14 +72,36 @@ export default function GoogleLoginButton({ role = 'guest', onSuccess, text = 'c
     };
   }, [clientId, role, text, dispatch, onSuccess]);
 
+  const handleFirebaseGoogleSignIn = async () => {
+    if (!auth || !googleProvider) return;
+    try {
+      setSigningIn(true);
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const idToken = await userCredential.user.getIdToken();
+      const result = await dispatch(firebaseLogin({ idToken, role }));
+      if (!result.error) {
+        toast.success('Signed in with Google via Firebase!');
+        if (onSuccess) onSuccess(result.payload);
+      } else {
+        toast.error(result.payload || 'Firebase sign-in failed');
+      }
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        toast.error(err?.message || 'Google sign-in failed');
+      }
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
   const handleFallbackClick = () => {
     toast.error(
-      'Google OAuth is not configured yet. Set VITE_GOOGLE_CLIENT_ID in frontend/.env and GOOGLE_CLIENT_ID in backend/.env.',
+      'Firebase / Google Auth is not configured yet. Add VITE_FIREBASE_* keys in frontend/.env and FIREBASE_* keys in backend/.env.',
       { duration: 5000 }
     );
   };
 
-  if (clientId) {
+  if (!isFirebaseConfigured && clientId) {
     return (
       <div className="w-full">
         <div ref={buttonContainerRef} className="w-full flex justify-center min-h-[42px]" />
@@ -89,8 +115,9 @@ export default function GoogleLoginButton({ role = 'guest', onSuccess, text = 'c
   return (
     <button
       type="button"
-      onClick={handleFallbackClick}
-      className="w-full py-2.5 px-4 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm shadow-sm transition-all flex items-center justify-center space-x-3"
+      disabled={signingIn}
+      onClick={isFirebaseConfigured ? handleFirebaseGoogleSignIn : handleFallbackClick}
+      className="w-full py-2.5 px-4 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm shadow-sm transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
     >
       <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
         <path
@@ -110,7 +137,7 @@ export default function GoogleLoginButton({ role = 'guest', onSuccess, text = 'c
           d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"
         />
       </svg>
-      <span>Continue with Google</span>
+      <span>{signingIn ? 'Signing in...' : 'Continue with Google'}</span>
     </button>
   );
 }
